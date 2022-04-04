@@ -41,9 +41,36 @@ class CellGroup {
 }
 
 class Spreadsheet {
-    let cells: [[CellContent]] = [] // FIXME
-    let groups: [CellGroup] = []
-    let labelToGroup: [Label: (column: Int,group:  CellGroup)] = [:]
+    let cells: [[CellContent]]
+    let groups: [CellGroup]
+    let labelToGroup: [Label: (column: Int,group:  CellGroup)]
+
+    init(_ cells: [[CellContent]]) throws {
+        self.cells = cells
+
+        var currentGroup: (y: Int, labels: [Label])? = nil
+        var groups: [CellGroup] = []
+        var labelToGroup: [Label: (column: Int,group:  CellGroup)] = [:]
+        for (index, row) in self.cells.enumerated() {
+            if row.count > 0 {
+                if (row[0] as? LabelContent) != nil {
+                    if let groupInfo = currentGroup {
+                        let group = CellGroup(groupInfo.y + 1, index - groupInfo.y, groupInfo.labels)
+                        groups.append(group)
+                        for (labelIndex, label) in groupInfo.labels.enumerated() {
+                            labelToGroup[label] = (labelIndex, group)
+                        }
+                    }
+
+                    let labels = row.map({cell in (cell as! LabelContent).data})
+                    currentGroup = (index, labels)
+                }
+            }
+        }
+
+        self.groups = groups
+        self.labelToGroup = labelToGroup
+    }
 
     func getCell(_ address: CellAddress) -> CellContent {
         return cells[address.x][address.y]

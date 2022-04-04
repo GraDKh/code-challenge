@@ -46,6 +46,20 @@ class ArrayValue: Value {
     }
 }
 
+// Special value for spreade b operator.
+// This value shouldn't be the final one, it can only be processed by a further function call
+class SpreadValue: Value {
+    let vals: [Value]
+
+    init(_ vals: [Value]) {
+        self.vals = vals
+    }
+
+    func toString() -> String {
+        return "!Spread value"
+    }
+}
+
 class ExpressionContext {
     let address: CellAddress
     let sheet: Spreadsheet
@@ -128,7 +142,17 @@ class FunctionCall: Expression {
     }
 
     func evaluate(_ context: ExpressionContext) -> Value {
-        return function(args.map({expr in expr.evaluate(context)}))
+        // unroll spread values
+        let args = args.flatMap({(expr: Expression) -> [Value] in 
+            let value = expr.evaluate(context)
+            if let spreadValue = value as? SpreadValue {
+                return spreadValue.vals
+            } else {
+                return [value]
+            }
+        })
+
+        return function(args)
     }
 
     func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>) {
