@@ -1,6 +1,6 @@
 struct EmptyValue {}
 
-struct Label {
+struct Label: Hashable {
     let name: String
 
     init(_ name: String) {

@@ -10,19 +10,19 @@ protocol Value {
     func toString() -> String
 }
 
-struct ErrorValue : Value {
+struct ErrorValue: Value {
     func toString() -> String {
         return "Error"
     }
 }
 
-struct NullValue : Value {
+struct NullValue: Value {
     func toString() -> String {
         return ""
     }
 }
 
-class SingleValue<Data> : Value {
+class SingleValue<Data>: Value {
     let val: Data
 
     init(_ val: Data) {
@@ -31,6 +31,18 @@ class SingleValue<Data> : Value {
 
     func toString() -> String {
         return "\(val)"
+    }
+}
+
+class ArrayValue: Value {
+    let vals: [Value]
+
+    init(_ vals: [Value]) {
+        self.vals = vals
+    }
+
+    func toString() -> String {
+        return vals.map({val in val.toString()}).joined(separator: ", ")
     }
 }
 
@@ -63,7 +75,7 @@ enum Operator {
     case plus, minus, product, division
 }
 
-class BinaryOp : Expression {
+class BinaryOp: Expression {
     let op: Operator
     let left: Expression
     let right: Expression
@@ -100,15 +112,13 @@ class BinaryOp : Expression {
     }
 }
 
-protocol Function {
-    func call(_ args: [Value]) -> Value
-}
+typealias Function = (_ args: [Value]) -> Value
 
 class FunctionCall: Expression {
     let function: Function
     let args: [Expression]
 
-    init(_ function: Function, _ args: [Expression]) {
+    init(_ function: @escaping Function, _ args: [Expression]) {
         self.function = function
         self.args = args
     }
@@ -118,7 +128,7 @@ class FunctionCall: Expression {
     }
 
     func evaluate(_ context: ExpressionContext) -> Value {
-        return function.call(args.map({expr in expr.evaluate(context)}))
+        return function(args.map({expr in expr.evaluate(context)}))
     }
 
     func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>) {
@@ -230,8 +240,61 @@ class UpCellRef: Expression {
     }
 }
 
-/*
+// Reference to the last cell in a row group having specified column, e.g.
+// E^v
 class LastColGroupCellRef: Expression {
     let x: Int
+
+    init(_ x: Int) {
+        self.x = x
+    }
+
+    func shiftDown(_ context: ExpressionContext) -> Expression {
+        return self
+    }
+
+    func evaluate(_ context: ExpressionContext) -> Value {
+        if let address = context.sheet.getLastGroupCell(x, context.address.y) {
+            return context.sheet.getCell(address).evaluate(context.withAddress(address))
+        } else {
+            return ErrorValue()
+        }
+    }
+
+    func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>) {
+        if let address = context.sheet.getLastGroupCell(x, context.address.y) {
+            refs.insert(address)
+        }
+    }
 }
-*/
+
+// Reference to a cell by label + row offset, e.g.
+// @label<n>
+
+class LabelRef: Expression {
+    let label: Label
+    let rowOffset: Int
+
+    init(_ label: Label, _ rowOffset: Int) {
+        self.label = label
+        self.rowOffset = rowOffset
+    }
+
+    func shiftDown(_ context: ExpressionContext) -> Expression {
+        return LabelRef(label, rowOffset + 1)
+    }
+
+    func evaluate(_ context: ExpressionContext) -> Value {
+        if let address = context.sheet.getCellAddressByLabel(label, rowOffset) {
+            return context.sheet.getCell(address).evaluate(context.withAddress(address))
+        } else {
+            return ErrorValue()
+        }
+    }
+
+    func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>) {
+        if let address = context.sheet.getCellAddressByLabel(label, rowOffset) {
+            refs.insert(address)
+        }
+    }
+}
