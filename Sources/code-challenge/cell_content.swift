@@ -3,7 +3,7 @@ public struct EmptyValue {}
 public struct Label: Hashable {
     let name: String
 
-    init(_ name: String) {
+    public init(_ name: String) {
         self.name = name
     }
 }

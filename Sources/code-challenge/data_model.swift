@@ -1,6 +1,6 @@
 import Algorithms
 
-struct CellAddress: Hashable {
+public struct CellAddress: Hashable {
     let x: Int
     let y: Int
 

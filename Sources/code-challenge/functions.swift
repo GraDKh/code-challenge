@@ -1,5 +1,5 @@
-class Functions {
-    static func split(_ args: [Value]) -> Value {
+struct Split: Function {
+    func call(_ args: [Value]) -> Value {
         if args.count != 2 {
             return ErrorValue()
         }
@@ -12,24 +12,28 @@ class Functions {
 
         return ErrorValue()
     }
+}
 
-    static func spread(_ args: [Value]) -> Value {
+struct Spread: Function {
+    func call(_ args: [Value]) -> Value {
         return SpreadValue(args)
     }
+}
 
-    static func asNumber(_ val: Value) -> Double? {
-        if let number = val as? SingleValue<Double> {
-            return number.val
-        } else if let str = val as? SingleValue<String> {
-            if let number = Double(str.val) {
-                return number
-            }
+func asNumber(_ val: Value) -> Double? {
+    if let number = val as? SingleValue<Double> {
+        return number.val
+    } else if let str = val as? SingleValue<String> {
+        if let number = Double(str.val) {
+            return number
         }
-
-        return nil
     }
 
-    static func sum(_ args: [Value]) -> Value {
+    return nil
+}
+
+struct Sum: Function {
+    func call(_ args: [Value]) -> Value {
         var result = 0.0
         for arg in args {
             if let number = asNumber(arg) {
@@ -40,8 +44,10 @@ class Functions {
         }
         return SpreadValue(args)
     }
+}
 
-    static func bte(_ args: [Value]) -> Value {
+struct BTE: Function {
+    func call(_ args: [Value]) -> Value {
         if args.count != 2 {
             return ErrorValue()
         }
@@ -54,12 +60,31 @@ class Functions {
 
         return ErrorValue()
     }
+}
 
-    static func text(_ args: [Value]) -> Value {
+struct Text: Function {
+    func call(_ args: [Value]) -> Value {
         if args.count != 1 {
             return ErrorValue()
         }
 
         return SingleValue<String>(args[0].toString())
+    }
+}
+
+struct UnknownFunction: Function {
+    func call(_ args: [Value]) -> Value {
+        return ErrorValue()
+    }
+}
+
+func parseFunction(_ name: String) -> Function {
+    switch name {
+        case "split": return Split()
+        case "spread": return Spread()
+        case "sum": return Sum()
+        case "bte": return BTE()
+        case "text": return Text()
+        default: return UnknownFunction()
     }
 }
