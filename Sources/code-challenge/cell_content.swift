@@ -1,6 +1,6 @@
-struct EmptyValue {}
+public struct EmptyValue {}
 
-struct Label: Hashable {
+public struct Label: Hashable {
     let name: String
 
     init(_ name: String) {
@@ -8,7 +8,7 @@ struct Label: Hashable {
     }
 }
 
-protocol CellContentVisitor {
+public protocol CellContentVisitor {
     func visit(_: EmptyValue)
     func visit(_ value: String)
     func visit(_ value: Double)
@@ -24,65 +24,97 @@ class DefaultCellContentVisitor: CellContentVisitor {
     func visit(_ value: Label) {}
 }
 
-protocol CellContent {
+public protocol CellContent {
     func apply(_ visitor: CellContentVisitor)
     func evaluate(_ context: ExpressionContext) -> Value
+    func compare(_ other: CellContent) -> Bool
 }
 
-class BaseData<Data> {
+public class SingleDataContent<Data: Equatable> {
     let data: Data
 
-    init(data: Data) {
+    public init(_ data: Data) {
         self.data = data
     }
+
+
+    func compare<FinalType: SingleDataContent<Data>, CellContent>(_ left : FinalType, _ right: CellContent) -> Bool {
+        if let otherData = right as? FinalType {
+            return left.data == otherData.data
+        } else {
+            return false
+        }
+    }
 }
 
-class StringContent: BaseData<String>, CellContent {
-    func apply(_ visitor: CellContentVisitor) {
+public class StringContent: SingleDataContent<String>, CellContent {
+    public func apply(_ visitor: CellContentVisitor) {
         visitor.visit(data)
     }
 
-    func evaluate(_ context: ExpressionContext) -> Value {
+    public func evaluate(_ context: ExpressionContext) -> Value {
         return SingleValue<String>(data)
     }
+
+    public func compare(_ other: CellContent) -> Bool {
+        return compare(self, other)
+    }
 }
 
-class NumberContent: BaseData<Double>, CellContent {
-    func apply(_ visitor: CellContentVisitor) {
+public class NumberContent: SingleDataContent<Double>, CellContent {
+    public func apply(_ visitor: CellContentVisitor) {
         visitor.visit(data)
     }
 
-    func evaluate(_ context: ExpressionContext) -> Value {
+    public func evaluate(_ context: ExpressionContext) -> Value {
         return SingleValue<Double>(data)
     }
+
+    public func compare(_ other: CellContent) -> Bool {
+        return compare(self, other)
+    }
 }
 
-class FormulaContent: BaseData<Formula>, CellContent {
-    func apply(_ visitor: CellContentVisitor) {
+public class FormulaContent: SingleDataContent<Formula>, CellContent {
+    public func apply(_ visitor: CellContentVisitor) {
         visitor.visit(data)
     }
 
-    func evaluate(_ context: ExpressionContext) -> Value {
+    public func evaluate(_ context: ExpressionContext) -> Value {
         return data.expr.evaluate(context)
     }
+
+    public func compare(_ other: CellContent) -> Bool {
+        return compare(self, other)
+    }
 }
 
-class LabelContent: BaseData<Label>, CellContent {
-    func apply(_ visitor: CellContentVisitor) {
+public class LabelContent: SingleDataContent<Label>, CellContent {
+    public func apply(_ visitor: CellContentVisitor) {
         visitor.visit(data)
     }
 
-    func evaluate(_ context: ExpressionContext) -> Value {
+    public func evaluate(_ context: ExpressionContext) -> Value {
         return SingleValue<String>("!\(data.name)")
+    }
+
+    public func compare(_ other: CellContent) -> Bool {
+        return compare(self, other)
     }
 }
 
-class EmptyContent: CellContent {
-    func apply(_ visitor: CellContentVisitor) {
+public struct EmptyContent: CellContent {
+    public init(){}
+
+    public func apply(_ visitor: CellContentVisitor) {
         visitor.visit(EmptyValue())
     }
 
-    func evaluate(_ context: ExpressionContext) -> Value {
+    public func evaluate(_ context: ExpressionContext) -> Value {
         return NullValue()
+    }
+
+    public func compare(_ other: CellContent) -> Bool {
+        return (other as? EmptyContent) != nil
     }
 }

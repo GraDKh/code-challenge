@@ -1,12 +1,16 @@
-class Formula {
+public struct Formula: Equatable {
     let expr: Expression
 
     init(expr: Expression) {
         self.expr = expr
     }
+
+    public static func==(_ left: Formula, _ right: Formula) -> Bool {
+        return left.expr.compare(right.expr)
+    }
 }
 
-protocol Value {
+public protocol Value {
     func toString() -> String
 }
 
@@ -60,7 +64,7 @@ class SpreadValue: Value {
     }
 }
 
-class ExpressionContext {
+public class ExpressionContext {
     let address: CellAddress
     let sheet: Spreadsheet
 
@@ -83,13 +87,42 @@ protocol Expression {
     func shiftDown(_ context: ExpressionContext) -> Expression
     func evaluate(_ context: ExpressionContext) -> Value
     func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>)
+
+    func compare(_ other: Expression) -> Bool
+}
+
+struct Literal<Data: Equatable>: Expression, Equatable {
+    let data: Data
+
+    init(_ data: Data) {
+        self.data = data
+    }
+
+    func shiftDown(_ context: ExpressionContext) -> Expression {
+        return self
+    }
+
+    func evaluate(_ context: ExpressionContext) -> Value {
+        return SingleValue<Data>(data)
+    }
+
+    func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>) {
+    }
+
+    func compare(_ other: Expression) -> Bool {
+        if let otherLit = other as? Literal<Data> {
+            return self == otherLit
+        } else {
+            return false
+        }
+    }
 }
 
 enum Operator {
     case plus, minus, product, division
 }
 
-class BinaryOp: Expression {
+struct BinaryOp: Expression {
     let op: Operator
     let left: Expression
     let right: Expression
@@ -124,15 +157,27 @@ class BinaryOp: Expression {
         left.getReferences(context, &refs)
         right.getReferences(context, &refs)
     }
+
+    func compare(_ other: Expression) -> Bool {
+        if let otherOp = other as? BinaryOp {
+            return op == otherOp.op &&
+                left.compare(otherOp.left) &&
+                right.compare(otherOp.right)
+        } else {
+            return false
+        }
+    }
 }
 
-typealias Function = (_ args: [Value]) -> Value
+protocol Function {
+    func call(_ args: [Value]) -> Value
+}
 
-class FunctionCall: Expression {
+struct FunctionCall: Expression {
     let function: Function
     let args: [Expression]
 
-    init(_ function: @escaping Function, _ args: [Expression]) {
+    init(_ function: Function, _ args: [Expression]) {
         self.function = function
         self.args = args
     }
@@ -143,7 +188,7 @@ class FunctionCall: Expression {
 
     func evaluate(_ context: ExpressionContext) -> Value {
         // unroll spread values
-        let args = args.flatMap({(expr: Expression) -> [Value] in 
+        let args = args.flatMap({(expr: Expression) -> [Value] in
             let value = expr.evaluate(context)
             if let spreadValue = value as? SpreadValue {
                 return spreadValue.vals
@@ -152,7 +197,17 @@ class FunctionCall: Expression {
             }
         })
 
-        return function(args)
+        return function.call(args)
+    }
+
+    func compare(_ other: Expression) -> Bool {
+        if let otherFunc = other as? FunctionCall {
+            return type(of: function) == type(of: otherFunc.function) && // assume function implementation are stateless
+                   args.count == otherFunc.args.count &&
+                   zip(args, otherFunc.args).allSatisfy({(left, right) in left.compare(right)})
+        } else {
+            return false
+        }
     }
 
     func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>) {
@@ -162,7 +217,7 @@ class FunctionCall: Expression {
     }
 }
 
-class IncFrom: Expression {
+struct IncFrom: Expression, Equatable {
     let from: Double
 
     init(_ from: Double) {
@@ -179,10 +234,18 @@ class IncFrom: Expression {
 
     func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>) {
     }
+
+    func compare(_ other: Expression) -> Bool {
+        if let otherInc = other as? IncFrom {
+            return self == otherInc
+        } else {
+            return false
+        }
+    }
 }
 
 // ^^ operator
-class UpFormulaRef: Expression {
+struct UpFormulaRef: Expression, Equatable {
     func shiftDown(_ context: ExpressionContext) -> Expression {
         return UpFormulaRef()
     }
@@ -206,6 +269,14 @@ class UpFormulaRef: Expression {
         }
     }
 
+    func compare(_ other: Expression) -> Bool {
+        if let otherRef = other as? UpFormulaRef {
+            return self == otherRef
+        } else {
+            return false
+        }
+    }
+
     private func getFormulaExpression(_ context: ExpressionContext) -> Expression? {
         let upperCell = context.sheet.getCell(context.address.shiftUp())
         if let formula = upperCell as? FormulaContent {
@@ -217,7 +288,7 @@ class UpFormulaRef: Expression {
 }
 
 // Direct cell ref, e.g. A2
-class CellRef: Expression {
+struct CellRef: Expression, Equatable {
     let address: CellAddress
 
     init(_ address: CellAddress) {
@@ -235,10 +306,18 @@ class CellRef: Expression {
     func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>) {
         refs.insert(address)
     }
+
+    func compare(_ other: Expression) -> Bool {
+        if let otherRef = other as? CellRef {
+            return self == otherRef
+        } else {
+            return false
+        }
+    }
 }
 
 // Reference to the upper cell, e.g. E^
-class UpCellRef: Expression {
+struct UpCellRef: Expression, Equatable {
     let x: Int
 
     init(_ x: Int) {
@@ -259,6 +338,14 @@ class UpCellRef: Expression {
         refs.insert(getAddress(context))
     }
 
+    func compare(_ other: Expression) -> Bool {
+        if let otherRef = other as? UpCellRef {
+            return self == otherRef
+        } else {
+            return false
+        }
+    }
+
     private func getAddress(_ context: ExpressionContext) -> CellAddress {
         return context.address.withColumn(x).shiftUp()
     }
@@ -266,7 +353,7 @@ class UpCellRef: Expression {
 
 // Reference to the last cell in a row group having specified column, e.g.
 // E^v
-class LastColGroupCellRef: Expression {
+struct LastColGroupCellRef: Expression, Equatable {
     let x: Int
 
     init(_ x: Int) {
@@ -290,12 +377,20 @@ class LastColGroupCellRef: Expression {
             refs.insert(address)
         }
     }
+
+    func compare(_ other: Expression) -> Bool {
+        if let otherRef = other as? LastColGroupCellRef {
+            return self == otherRef
+        } else {
+            return false
+        }
+    }
 }
 
 // Reference to a cell by label + row offset, e.g.
 // @label<n>
 
-class LabelRef: Expression {
+struct LabelRef: Expression, Equatable {
     let label: Label
     let rowOffset: Int
 
@@ -319,6 +414,14 @@ class LabelRef: Expression {
     func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>) {
         if let address = context.sheet.getCellAddressByLabel(label, rowOffset) {
             refs.insert(address)
+        }
+    }
+
+    func compare(_ other: Expression) -> Bool {
+        if let otherRef = other as? LabelRef {
+            return self == otherRef
+        } else {
+            return false
         }
     }
 }
