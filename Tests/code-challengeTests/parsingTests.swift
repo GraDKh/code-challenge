@@ -113,4 +113,61 @@ final class parsingTests: XCTestCase {
         )
       ))))
     }
+
+    func testUpCellRef() throws {
+      var cell = try CellParsing.parseCell("=D^")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        UpCellRef(3)
+      ))))
+
+      cell = try CellParsing.parseCell("=D^ + sum(1, 2)")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        BinaryOp(
+          UpCellRef(3),
+          Operator.plus,
+          FunctionCall(
+            Sum(),
+            [Literal(1.0), Literal(2.0)]
+          )
+        )
+      ))))
+    }
+
+    func testLastGroupCellRef() throws {
+      var cell = try CellParsing.parseCell("=D^v")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        LastColGroupCellRef(3)
+      ))))
+
+      cell = try CellParsing.parseCell("=D^v + sum(1, 2)")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        BinaryOp(
+          LastColGroupCellRef(3),
+          Operator.plus,
+          FunctionCall(
+            Sum(),
+            [Literal(1.0), Literal(2.0)]
+          )
+        )
+      ))))
+    }
+
+    func testLabelRef() throws {
+      var cell = try CellParsing.parseCell("=@label<4>")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        LabelRef(Label("label"), 4)
+      ))))
+
+      cell = try CellParsing.parseCell("=@label<4> + sum(1, 2)")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        BinaryOp(
+          LabelRef(Label("label"), 4),
+          Operator.plus,
+          FunctionCall(
+            Sum(),
+            [Literal(1.0), Literal(2.0)]
+          )
+        )
+      ))))
+    }
 }

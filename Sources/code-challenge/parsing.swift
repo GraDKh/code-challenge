@@ -39,11 +39,33 @@ func toExpression(_ val: Double) -> Expression {
     return Literal(val)
 }
 
-// TODO: currenlty support only address in range A-Z(0-9)+
-let cellRefParser = Parse{
-        Prefix<Substring>(minLength: 1, maxLength: 1, while: {char in char.isLetter}).map({str in Array(str.uppercased())[0].asciiValue! - Character("A").asciiValue!})
+// TODO: currently we support only A-Z columns
+let columnParser = Prefix<Substring>(minLength: 1, maxLength: 1, while: {char in char.isLetter})
+    .map({str in Int(Array(str.uppercased())[0].asciiValue! - Character("A").asciiValue!)})
+
+let cellRefParser = Parse {
+        columnParser
         Int.parser()
     }.map({(x, y) in CellRef(CellAddress(Int(x), y - 1))}).map(asExpression)
+
+let upCellRefParser = Parse {
+    columnParser
+    "^"
+}.map({x in UpCellRef(x)}).map(asExpression)
+
+let lastColGroupCellRefParser = Parse {
+    columnParser
+    "^v"
+}.map({x in LastColGroupCellRef(x)}).map(asExpression)
+
+let labelRefParser = Parse {
+    "@"
+    identifierName
+    "<"
+    Int.parser(of: Substring.self)
+    ">"
+}.map({(label, offset) in LabelRef(Label(label), offset)})
+.map(asExpression)
 
 struct AtomicExprParser: Parser {
     func parse(_ input: inout Substring) throws -> Expression {
@@ -52,6 +74,9 @@ struct AtomicExprParser: Parser {
             OneOf {
                 "^^".map(UpFormulaRef.init).map(asExpression)
                 cellRefParser
+                lastColGroupCellRefParser
+                upCellRefParser
+                labelRefParser
                 Parse {
                     "("
                     ExpressionParser()
