@@ -10,11 +10,11 @@ func readFile(location: String) throws -> [[String]] {
 public class CellParsing {
     static let number = Double.parser(of: Substring.self)
     static let string = Rest<Substring>().map(String.init)
-    static let empty = Parse{"" }.map({EmptyContent() as CellContent})
+    static let empty = Parse{""}.map({EmptyContent() as CellContent})
     static let cellContent = OneOf {
-        empty
         number.map(toContent)
         string.map(toContent)
+        empty
     }
 
     public static func parseCell(_ str: String) throws -> CellContent {
