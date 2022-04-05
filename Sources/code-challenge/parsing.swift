@@ -39,12 +39,19 @@ func toExpression(_ val: Double) -> Expression {
     return Literal(val)
 }
 
+// TODO: currenlty support only address in range A-Z(0-9)+
+let cellRefParser = Parse{
+        Prefix<Substring>(minLength: 1, maxLength: 1, while: {char in char.isLetter}).map({str in Array(str.uppercased())[0].asciiValue! - Character("A").asciiValue!})
+        Int.parser()
+    }.map({(x, y) in CellRef(CellAddress(Int(x), y - 1))}).map(asExpression)
+
 struct AtomicExprParser: Parser {
     func parse(_ input: inout Substring) throws -> Expression {
         return try Parse{
             Whitespace()
             OneOf {
                 "^^".map(UpFormulaRef.init).map(asExpression)
+                cellRefParser
                 Parse {
                     "("
                     ExpressionParser()

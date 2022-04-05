@@ -94,4 +94,23 @@ final class parsingTests: XCTestCase {
           Literal(1.0)
       )))))
     }
+
+    func testOtherCellRef() throws {
+      var cell = try CellParsing.parseCell("=D4")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        CellRef(CellAddress(3, 3))
+      ))))
+
+      cell = try CellParsing.parseCell("=sum(1, 2) + D4")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        BinaryOp(
+          FunctionCall(
+            Sum(),
+            [Literal(1.0), Literal(2.0)]
+          ),
+          Operator.plus,
+          CellRef(CellAddress(3, 3))
+        )
+      ))))
+    }
 }
