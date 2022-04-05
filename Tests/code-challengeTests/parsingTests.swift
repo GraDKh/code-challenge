@@ -51,7 +51,7 @@ final class parsingTests: XCTestCase {
       XCTAssert(cell.compare(FormulaContent(Formula(Literal<String>("abc")))))
     }
 
-    func testFunctionCallLiteralFormula() throws {
+    func testFunctionCallFormula() throws {
       let cell = try CellParsing.parseCell("=sum(1, 2)")
       XCTAssert(cell.compare(FormulaContent(Formula(
         FunctionCall(
@@ -61,5 +61,37 @@ final class parsingTests: XCTestCase {
             Literal<Double>(2)
           ]
         )))))
+    }
+
+    func testArithmeticFormula() throws {
+      let cell = try CellParsing.parseCell("=1 + 2*3 - 5")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        BinaryOp(
+          BinaryOp(
+            Literal(1.0),
+            Operator.plus,
+            BinaryOp(
+              Literal(2.0),
+              Operator.product,
+              Literal(3.0)
+            )),
+          Operator.minus,
+          Literal(5.0)
+        )))))
+    }
+
+    func testUpperFormulaRef() throws {
+      var cell = try CellParsing.parseCell("=^^")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        UpFormulaRef()
+      ))))
+
+      cell = try CellParsing.parseCell("=^^ + 1")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        BinaryOp(
+          UpFormulaRef(),
+          Operator.plus,
+          Literal(1.0)
+      )))))
     }
 }

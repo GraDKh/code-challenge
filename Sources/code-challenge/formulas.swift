@@ -258,6 +258,8 @@ public struct IncFrom: Expression, Equatable {
 
 // ^^ operator
 public struct UpFormulaRef: Expression, Equatable {
+    public init() {}
+
     public func shiftDown(_ context: ExpressionContext) -> Expression {
         return UpFormulaRef()
     }

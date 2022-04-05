@@ -44,6 +44,7 @@ struct AtomicExprParser: Parser {
         return try Parse{
             Whitespace()
             OneOf {
+                "^^".map(UpFormulaRef.init).map(asExpression)
                 Parse {
                     "("
                     ExpressionParser()
