@@ -20,7 +20,7 @@ struct FunctionCallParser: Parser {
             ","
             }
             ")"
-        }.map(FunctionCall.init).map(asExpression).parse(input)
+        }.map(FunctionCall.init).map(asExpression).parse(&input)
     }
 }
 
@@ -31,7 +31,7 @@ struct StringLiteralParser: Parser {
             "\""
             Prefix { $0 != "\"" }.map(String.init)
             "\""
-        }.map(Literal<String>.init).map(asExpression).parse(input)
+        }.map(Literal<String>.init).map(asExpression).parse(&input)
     }
 }
 
@@ -41,16 +41,20 @@ func toExpression(_ val: Double) -> Expression {
 
 struct AtomicExprParser: Parser {
     func parse(_ input: inout Substring) throws -> Expression {
-        return try OneOf {
-            Parse {
-                "("
-                ExpressionParser()
-                ")"
+        return try Parse{
+            Whitespace()
+            OneOf {
+                Parse {
+                    "("
+                    ExpressionParser()
+                    ")"
+                }
+                FunctionCallParser()
+                StringLiteralParser()
+                Double.parser(of: Substring.self).map(toExpression)
             }
-            FunctionCallParser()
-            StringLiteralParser()
-            Double.parser(of: Substring.self).map(toExpression)
-        }.parse(input)
+            Whitespace()
+        }.map({(_, expr, _) in expr}).parse(&input)
     }
 }
 
@@ -59,11 +63,14 @@ struct SubExpressionParser: Parser {
         return try OneOf {
             Parse {
                 AtomicExprParser()
-                Prefix { $0 == "*" || $0 == "*"}.map(String.init).map(Operator.fromString)
+                OneOf {
+                    "*".map({Operator.product})
+                    "/".map({Operator.division})
+                }
                 SubExpressionParser()
             }.map(BinaryOp.init).map(asExpression)
             Parse { AtomicExprParser() }
-        }.parse(input)
+        }.parse(&input)
     }
 }
 
@@ -71,16 +78,36 @@ func asExpression<T: Expression>(_ expr: T) -> Expression {
     return expr
 }
 
+struct PlusMinusExprParser: Parser {
+    let operation = OneOf {
+                    "+".map({Operator.plus})
+                    "-".map({Operator.minus})
+                }
+    let operand = SubExpressionParser()
+
+    func parse(_ input: inout Substring) throws -> Expression {
+        var lhs = try operand.parse(&input)
+        var rest = input
+        while true {
+            do {
+                let operation = try operation.parse(&input)
+                let rhs = try operand.parse(&input)
+                rest = input
+                lhs = BinaryOp(lhs, operation, rhs)
+            } catch {
+                input = rest
+                return lhs
+            }
+        }
+    }
+}
+
 struct ExpressionParser: Parser {
     func parse(_ input: inout Substring) throws -> Expression {
         return try OneOf {
-            Parse {
-                SubExpressionParser()
-                Prefix { $0 == "+" || $0 == "-"}.map(String.init).map(Operator.fromString)
-                SubExpressionParser()
-            }.map(BinaryOp.init).map(asExpression)
+            PlusMinusExprParser()
             Parse { AtomicExprParser() }
-        }.parse(input)
+        }.parse(&input)
     }
 }
 

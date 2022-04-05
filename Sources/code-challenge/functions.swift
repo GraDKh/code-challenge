@@ -1,5 +1,7 @@
-struct Split: Function {
-    func call(_ args: [Value]) -> Value {
+public struct Split: Function {
+    public init() {}
+
+    public func call(_ args: [Value]) -> Value {
         if args.count != 2 {
             return ErrorValue()
         }
@@ -14,8 +16,10 @@ struct Split: Function {
     }
 }
 
-struct Spread: Function {
-    func call(_ args: [Value]) -> Value {
+public struct Spread: Function {
+    public init() {}
+
+    public func call(_ args: [Value]) -> Value {
         return SpreadValue(args)
     }
 }
@@ -32,8 +36,10 @@ func asNumber(_ val: Value) -> Double? {
     return nil
 }
 
-struct Sum: Function {
-    func call(_ args: [Value]) -> Value {
+public struct Sum: Function {
+    public init() {}
+
+    public func call(_ args: [Value]) -> Value {
         var result = 0.0
         for arg in args {
             if let number = asNumber(arg) {
@@ -46,8 +52,10 @@ struct Sum: Function {
     }
 }
 
-struct BTE: Function {
-    func call(_ args: [Value]) -> Value {
+public struct BTE: Function {
+    public init() {}
+
+    public func call(_ args: [Value]) -> Value {
         if args.count != 2 {
             return ErrorValue()
         }
@@ -62,8 +70,10 @@ struct BTE: Function {
     }
 }
 
-struct Text: Function {
-    func call(_ args: [Value]) -> Value {
+public struct Text: Function {
+    public init() {}
+
+    public func call(_ args: [Value]) -> Value {
         if args.count != 1 {
             return ErrorValue()
         }
@@ -72,8 +82,10 @@ struct Text: Function {
     }
 }
 
-struct UnknownFunction: Function {
-    func call(_ args: [Value]) -> Value {
+public struct UnknownFunction: Function {
+    public init() {}
+
+    public func call(_ args: [Value]) -> Value {
         return ErrorValue()
     }
 }

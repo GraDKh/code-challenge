@@ -41,8 +41,25 @@ final class parsingTests: XCTestCase {
       XCTAssert(cell.compare(LabelContent(Label("label"))))
     }
 
-    func testSimpleFormulas() throws {
+    func testNumberLiteralFormula() throws {
       let cell = try CellParsing.parseCell("=1")
       XCTAssert(cell.compare(FormulaContent(Formula(Literal<Double>(1)))))
+    }
+
+    func testStringLiteralFormula() throws {
+      let cell = try CellParsing.parseCell("=\"abc\"")
+      XCTAssert(cell.compare(FormulaContent(Formula(Literal<String>("abc")))))
+    }
+
+    func testFunctionCallLiteralFormula() throws {
+      let cell = try CellParsing.parseCell("=sum(1, 2)")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        FunctionCall(
+          Sum(),
+          [
+            Literal<Double>(1),
+            Literal<Double>(2)
+          ]
+        )))))
     }
 }
