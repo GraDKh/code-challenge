@@ -170,4 +170,22 @@ final class parsingTests: XCTestCase {
         )
       ))))
     }
+
+    func testBteWithLabels() throws {
+      let cell = try CellParsing.parseCell("=text(bte(@adjusted_cost<1>, @cost_threshold<1>))")
+      XCTAssert(cell.compare(FormulaContent(Formula(
+        FunctionCall(
+          Text(),
+          [
+            FunctionCall(
+              BTE(),
+              [
+                LabelRef(Label("adjusted_cost"), 0),
+                LabelRef(Label("cost_threshold"), 0)
+              ]
+            )
+          ]
+        )
+      ))))
+    }
 }

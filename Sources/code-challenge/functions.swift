@@ -20,7 +20,12 @@ public struct Spread: Function {
     public init() {}
 
     public func call(_ args: [Value]) -> Value {
-        return SpreadValue(args)
+        if args.count == 1 {
+            if let arr = args[0] as? ArrayValue {
+                return SpreadValue(arr)
+            }
+        }
+        return ErrorValue()
     }
 }
 
@@ -48,7 +53,7 @@ public struct Sum: Function {
                 return ErrorValue()
             }
         }
-        return SpreadValue(args)
+        return SingleValue<Double>(result)
     }
 }
 
@@ -82,6 +87,14 @@ public struct Text: Function {
     }
 }
 
+public struct Concat: Function {
+    public init() {}
+
+    public func call(_ args: [Value]) -> Value {
+        return SingleValue<String>(args.map({val in val.toString()}).joined())
+    }
+}
+
 public struct UnknownFunction: Function {
     public init() {}
 
@@ -97,6 +110,7 @@ func parseFunction(_ name: String) -> Function {
         case "sum": return Sum()
         case "bte": return BTE()
         case "text": return Text()
+        case "concat": return Concat()
         default: return UnknownFunction()
     }
 }

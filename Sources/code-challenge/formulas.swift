@@ -15,6 +15,9 @@ public protocol Value {
 }
 
 struct ErrorValue: Value {
+    init() {
+    }
+
     func toString() -> String {
         return "Error"
     }
@@ -55,8 +58,8 @@ class ArrayValue: Value {
 class SpreadValue: Value {
     let vals: [Value]
 
-    init(_ vals: [Value]) {
-        self.vals = vals
+    init(_ arr: ArrayValue) {
+        self.vals = arr.vals
     }
 
     func toString() -> String {
@@ -73,8 +76,8 @@ public class ExpressionContext {
         self.sheet = sheet
     }
 
-    func shiftUp() -> ExpressionContext {
-        return ExpressionContext(address.shiftUp(), sheet)
+    func shiftUp(_ offset: Int = 1) -> ExpressionContext {
+        return ExpressionContext(address.shiftUp(offset), sheet)
     }
 
     func withAddress(_ address: CellAddress) -> ExpressionContext {
@@ -200,8 +203,8 @@ public struct FunctionCall: Expression {
 
     public func evaluate(_ context: ExpressionContext) -> Value {
         // unroll spread values
-        let args = args.flatMap({(expr: Expression) -> [Value] in
-            let value = expr.evaluate(context)
+        let flatArgs = args.flatMap({(expr: Expression) -> [Value] in
+          let value = expr.evaluate(context)
             if let spreadValue = value as? SpreadValue {
                 return spreadValue.vals
             } else {
@@ -209,7 +212,7 @@ public struct FunctionCall: Expression {
             }
         })
 
-        return function.call(args)
+        return function.call(flatArgs)
     }
 
     public func compare(_ other: Expression) -> Bool {
@@ -230,9 +233,9 @@ public struct FunctionCall: Expression {
 }
 
 public struct IncFrom: Expression, Equatable {
-    let from: Double
+    let from: Int
 
-    init(_ from: Double) {
+    init(_ from: Int) {
         self.from = from
     }
 
@@ -258,21 +261,25 @@ public struct IncFrom: Expression, Equatable {
 
 // ^^ operator
 public struct UpFormulaRef: Expression, Equatable {
-    public init() {}
+    var offset: Int;
+
+    public init(_ offset: Int = 1) {
+        self.offset = offset
+    }
 
     public func shiftDown(_ context: ExpressionContext) -> Expression {
-        return UpFormulaRef()
+        return UpFormulaRef(offset + 1)
     }
 
     public func evaluate(_ context: ExpressionContext) -> Value {
-        if context.address.x <= 0 {
+        if context.address.y < offset {
             return ErrorValue()
         }
 
         if let expr = getFormulaExpression(context) {
             return expr.evaluate(context)
         } else {
-            let upperCell = context.sheet.getCell(context.address.shiftUp())
+            let upperCell = context.sheet.getCell(context.address.shiftUp(offset))
             return upperCell.evaluate(context)
         }
     }
@@ -292,9 +299,9 @@ public struct UpFormulaRef: Expression, Equatable {
     }
 
     private func getFormulaExpression(_ context: ExpressionContext) -> Expression? {
-        let upperCell = context.sheet.getCell(context.address.shiftUp())
+        let upperCell = context.sheet.getCell(context.address.shiftUp(offset))
         if let formula = upperCell as? FormulaContent {
-            return formula.data.expr.shiftDown(context.shiftUp())
+            return formula.data.expr.shiftDown(context.shiftUp(offset))
         } else {
             return nil
         }

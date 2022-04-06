@@ -7,7 +7,8 @@ func readFile(location: String) throws -> [[String]] {
     return text.split(separator: "\n").map({row in row.split(separator: "|").map({cell in String(cell)})})
 }
 
-let identifierName = Prefix<Substring>{$0.isLetter}.map(String.init)
+// TODO: need more rules for identifier name grammar
+let identifierName = Prefix<Substring>(minLength: 1, while: {char in char.isLetter || char == "_"}).map(String.init)
 
 struct FunctionCallParser: Parser {
     func parse(_ input: inout Substring) throws -> Expression {
@@ -64,15 +65,21 @@ let labelRefParser = Parse {
     "<"
     Int.parser(of: Substring.self)
     ">"
-}.map({(label, offset) in LabelRef(Label(label), offset)})
+}.map({(label, offset) in LabelRef(Label(label), offset - 1)})
 .map(asExpression)
+
+let incFromParser = Parse {
+    "incFrom("
+    Int.parser()
+    ")"
+}.map({from in IncFrom(from)}).map(asExpression)
 
 struct AtomicExprParser: Parser {
     func parse(_ input: inout Substring) throws -> Expression {
         return try Parse{
             Whitespace()
             OneOf {
-                "^^".map(UpFormulaRef.init).map(asExpression)
+                Parse{"^^"}.map({_ in UpFormulaRef()}).map(asExpression)
                 cellRefParser
                 lastColGroupCellRefParser
                 upCellRefParser
@@ -82,6 +89,7 @@ struct AtomicExprParser: Parser {
                     ExpressionParser()
                     ")"
                 }
+                incFromParser
                 FunctionCallParser()
                 StringLiteralParser()
                 Double.parser(of: Substring.self).map(toExpression)

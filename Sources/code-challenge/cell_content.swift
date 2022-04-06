@@ -30,24 +30,31 @@ public protocol CellContent {
     func compare(_ other: CellContent) -> Bool
 }
 
-public class SingleDataContent<Data: Equatable> {
-    let data: Data
+public protocol SingleDataContent: CellContent {
+    associatedtype Data: Equatable
 
-    public init(_ data: Data) {
-        self.data = data
-    }
+    var data: Data { get }
+}
 
-
-    func compare<FinalType: SingleDataContent<Data>, CellContent>(_ left : FinalType, _ right: CellContent) -> Bool {
-        if let otherData = right as? FinalType {
-            return left.data == otherData.data
+extension SingleDataContent {
+    public func compare(_ other: CellContent) -> Bool {
+       if let otherData = other as? Self {
+            return data == otherData.data
         } else {
             return false
         }
     }
 }
 
-public class StringContent: SingleDataContent<String>, CellContent {
+public final class StringContent: SingleDataContent {
+    public typealias Data = String
+
+    public let data: Data
+
+    public init(_ data: Data) {
+        self.data = data
+    }
+
     public func apply(_ visitor: CellContentVisitor) {
         visitor.visit(data)
     }
@@ -55,13 +62,17 @@ public class StringContent: SingleDataContent<String>, CellContent {
     public func evaluate(_ context: ExpressionContext) -> Value {
         return SingleValue<String>(data)
     }
-
-    public func compare(_ other: CellContent) -> Bool {
-        return compare(self, other)
-    }
 }
 
-public class NumberContent: SingleDataContent<Double>, CellContent {
+public final class NumberContent: SingleDataContent {
+    public typealias Data = Double
+
+    public let data: Data
+
+    public init(_ data: Data) {
+        self.data = data
+    }
+
     public func apply(_ visitor: CellContentVisitor) {
         visitor.visit(data)
     }
@@ -69,13 +80,17 @@ public class NumberContent: SingleDataContent<Double>, CellContent {
     public func evaluate(_ context: ExpressionContext) -> Value {
         return SingleValue<Double>(data)
     }
-
-    public func compare(_ other: CellContent) -> Bool {
-        return compare(self, other)
-    }
 }
 
-public class FormulaContent: SingleDataContent<Formula>, CellContent {
+public final class FormulaContent: SingleDataContent {
+    public typealias Data = Formula
+
+    public let data: Data
+
+    public init(_ data: Data) {
+        self.data = data
+    }
+
     public func apply(_ visitor: CellContentVisitor) {
         visitor.visit(data)
     }
@@ -83,23 +98,23 @@ public class FormulaContent: SingleDataContent<Formula>, CellContent {
     public func evaluate(_ context: ExpressionContext) -> Value {
         return data.expr.evaluate(context)
     }
-
-    public func compare(_ other: CellContent) -> Bool {
-        return compare(self, other)
-    }
 }
 
-public class LabelContent: SingleDataContent<Label>, CellContent {
+public final class LabelContent: SingleDataContent {
+    public typealias Data = Label
+
+    public let data: Data
+
+    public init(_ data: Data) {
+        self.data = data
+    }
+
     public func apply(_ visitor: CellContentVisitor) {
         visitor.visit(data)
     }
 
     public func evaluate(_ context: ExpressionContext) -> Value {
         return SingleValue<String>("!\(data.name)")
-    }
-
-    public func compare(_ other: CellContent) -> Bool {
-        return compare(self, other)
     }
 }
 
