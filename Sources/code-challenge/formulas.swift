@@ -29,14 +29,14 @@ struct NullValue: Value {
     }
 }
 
-class SingleValue<Data>: Value {
+public struct SingleValue<Data: Equatable>: Value, Equatable {
     let val: Data
 
-    init(_ val: Data) {
+    public init(_ val: Data) {
         self.val = val
     }
 
-    func toString() -> String {
+    public func toString() -> String {
         return "\(val)"
     }
 }
@@ -87,7 +87,7 @@ public class ExpressionContext {
 
 public protocol Expression {
     // Apply ^^ operator
-    func shiftDown(_ context: ExpressionContext) -> Expression
+    func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression
     func evaluate(_ context: ExpressionContext) -> Value
     func getReferences(_ context: ExpressionContext, _ refs: inout Set<CellAddress>)
 
@@ -101,7 +101,7 @@ public struct Literal<Data: Equatable>: Expression, Equatable {
         self.data = data
     }
 
-    public func shiftDown(_ context: ExpressionContext) -> Expression {
+    public func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression {
         return self
     }
 
@@ -148,8 +148,8 @@ public struct BinaryOp: Expression {
         self.right = right
     }
 
-    public func shiftDown(_ context: ExpressionContext) -> Expression {
-        return BinaryOp(left.shiftDown(context), op, right.shiftDown(context))
+    public func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression {
+        return BinaryOp(left.shiftDown(context, offset), op, right.shiftDown(context, offset))
     }
 
     public func evaluate(_ context: ExpressionContext) -> Value {
@@ -197,8 +197,8 @@ public struct FunctionCall: Expression {
         self.args = args
     }
 
-    public func shiftDown(_ context: ExpressionContext) -> Expression {
-        return FunctionCall(function, args.map({expr in expr.shiftDown(context)}))
+    public func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression {
+        return FunctionCall(function, args.map({expr in expr.shiftDown(context, offset)}))
     }
 
     public func evaluate(_ context: ExpressionContext) -> Value {
@@ -235,12 +235,12 @@ public struct FunctionCall: Expression {
 public struct IncFrom: Expression, Equatable {
     let from: Int
 
-    init(_ from: Int) {
+    public init(_ from: Int) {
         self.from = from
     }
 
-    public func shiftDown(_ context: ExpressionContext) -> Expression {
-        return IncFrom(from + 1)
+    public func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression {
+        return IncFrom(from + offset)
     }
 
     public func evaluate(_ context: ExpressionContext) -> Value {
@@ -267,8 +267,8 @@ public struct UpFormulaRef: Expression, Equatable {
         self.offset = offset
     }
 
-    public func shiftDown(_ context: ExpressionContext) -> Expression {
-        return UpFormulaRef(offset + 1)
+    public func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression {
+        return UpFormulaRef(offset + self.offset)
     }
 
     public func evaluate(_ context: ExpressionContext) -> Value {
@@ -301,7 +301,7 @@ public struct UpFormulaRef: Expression, Equatable {
     private func getFormulaExpression(_ context: ExpressionContext) -> Expression? {
         let upperCell = context.sheet.getCell(context.address.shiftUp(offset))
         if let formula = upperCell as? FormulaContent {
-            return formula.data.expr.shiftDown(context.shiftUp(offset))
+            return formula.data.expr.shiftDown(context.shiftUp(offset), offset)
         } else {
             return nil
         }
@@ -316,8 +316,8 @@ public struct CellRef: Expression, Equatable {
         self.address = address
     }
 
-    public func shiftDown(_ context: ExpressionContext) -> Expression {
-        return CellRef(address.shiftDown())
+    public func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression {
+        return CellRef(address.shiftDown(offset))
     }
 
     public func evaluate(_ context: ExpressionContext) -> Value {
@@ -345,7 +345,7 @@ public struct UpCellRef: Expression, Equatable {
         self.x = x
     }
 
-    public func shiftDown(_ context: ExpressionContext) -> Expression {
+    public func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression {
         return self
     }
 
@@ -381,7 +381,7 @@ public struct LastColGroupCellRef: Expression, Equatable {
         self.x = x
     }
 
-    public func shiftDown(_ context: ExpressionContext) -> Expression {
+    public func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression {
         return self
     }
 
@@ -420,7 +420,7 @@ public struct LabelRef: Expression, Equatable {
         self.rowOffset = rowOffset
     }
 
-    public func shiftDown(_ context: ExpressionContext) -> Expression {
+    public func shiftDown(_ context: ExpressionContext, _ offset: Int) -> Expression {
         return LabelRef(label, rowOffset + 1)
     }
 

@@ -40,12 +40,12 @@ class CellGroup {
     }
 }
 
-class Spreadsheet {
+public class Spreadsheet {
     let cells: [[CellContent]]
     let groups: [CellGroup]
     let labelToGroup: [Label: (column: Int,group:  CellGroup)]
 
-    init(_ cells: [[CellContent]]) throws {
+    public init(_ cells: [[CellContent]]) throws {
         self.cells = cells
 
         var currentGroup: (y: Int, labels: [Label])? = nil
@@ -94,7 +94,7 @@ class Spreadsheet {
         return nil
     }
 
-    func evaluate() -> [[Value]] {
+    public func evaluate() -> [[Value]] {
         var result = cells.map({row in [Value?](repeating: nil, count: row.count)})
 
         func evaluate(_ address: CellAddress) {
