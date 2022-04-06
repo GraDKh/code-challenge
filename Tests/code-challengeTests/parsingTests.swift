@@ -72,7 +72,7 @@ final class parsingTests: XCTestCase {
             Operator.plus,
             BinaryOp(
               Literal(2.0),
-              Operator.product,
+              Operator.mult,
               Literal(3.0)
             )),
           Operator.minus,

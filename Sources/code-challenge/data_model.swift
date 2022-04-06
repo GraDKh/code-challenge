@@ -62,7 +62,8 @@ public class Spreadsheet {
                         }
                     }
 
-                    let labels = row.map({cell in (cell as! LabelContent).data})
+                    let labels = row.filter({cell in cell as? EmptyContent == nil})
+                        .map({cell in (cell as! LabelContent).data})
                     currentGroup = (index, labels)
                 }
             }

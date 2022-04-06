@@ -2,17 +2,15 @@ public struct Split: Function {
     public init() {}
 
     public func call(_ args: [Value]) -> Value {
-        if args.count != 2 {
-            return ErrorValue()
-        }
-
-        if let str = args[0] as? SingleValue<String> {
-            if let separator = args[1] as? SingleValue<String> {
-                return ArrayValue(str.val.components(separatedBy: separator.val).map({chunk in SingleValue<String>(chunk)}))
+        if args.count == 2 {
+            if let str = args[0] as? SingleValue<String> {
+                if let separator = args[1] as? SingleValue<String> {
+                    return ArrayValue(str.val.components(separatedBy: separator.val).map({chunk in SingleValue<String>(chunk)}))
+                }
             }
         }
 
-        return ErrorValue()
+        return ErrorValue("!Error split")
     }
 }
 
@@ -25,7 +23,7 @@ public struct Spread: Function {
                 return SpreadValue(arr)
             }
         }
-        return ErrorValue()
+        return ErrorValue("!Error spread")
     }
 }
 
@@ -50,7 +48,7 @@ public struct Sum: Function {
             if let number = asNumber(arg) {
                 result += number
             } else {
-                return ErrorValue()
+                return ErrorValue("!Error sum")
             }
         }
         return SingleValue<Double>(result)
@@ -61,17 +59,15 @@ public struct BTE: Function {
     public init() {}
 
     public func call(_ args: [Value]) -> Value {
-        if args.count != 2 {
-            return ErrorValue()
-        }
-
-        if let left = args[0] as? SingleValue<Double> {
-            if let right = args[1] as? SingleValue<Double> {
-                return SingleValue<Bool>(left.val >= right.val)
+        if args.count == 2 {
+            if let left = args[0] as? SingleValue<Double> {
+                if let right = args[1] as? SingleValue<Double> {
+                    return SingleValue<Bool>(left.val >= right.val)
+                }
             }
         }
 
-        return ErrorValue()
+        return ErrorValue("!Error bte")
     }
 }
 
@@ -80,7 +76,7 @@ public struct Text: Function {
 
     public func call(_ args: [Value]) -> Value {
         if args.count != 1 {
-            return ErrorValue()
+            return ErrorValue("!Error text")
         }
 
         return SingleValue<String>(args[0].toString())
@@ -99,7 +95,7 @@ public struct UnknownFunction: Function {
     public init() {}
 
     public func call(_ args: [Value]) -> Value {
-        return ErrorValue()
+        return ErrorValue("!Unknown func")
     }
 }
 

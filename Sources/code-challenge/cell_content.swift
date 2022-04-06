@@ -1,5 +1,3 @@
-public struct EmptyValue {}
-
 public struct Label: Hashable {
     let name: String
 
@@ -8,24 +6,8 @@ public struct Label: Hashable {
     }
 }
 
-public protocol CellContentVisitor {
-    func visit(_: EmptyValue)
-    func visit(_ value: String)
-    func visit(_ value: Double)
-    func visit(_ value: Formula)
-    func visit(_ value: Label)
-}
-
-class DefaultCellContentVisitor: CellContentVisitor {
-    func visit(_: EmptyValue) {}
-    func visit(_ value: String) {}
-    func visit(_ value: Double) {}
-    func visit(_ value: Formula) {}
-    func visit(_ value: Label) {}
-}
-
+// Cell content from data model (not evaluated value)
 public protocol CellContent {
-    func apply(_ visitor: CellContentVisitor)
     func evaluate(_ context: ExpressionContext) -> Value
     func compare(_ other: CellContent) -> Bool
 }
@@ -55,10 +37,6 @@ public final class StringContent: SingleDataContent {
         self.data = data
     }
 
-    public func apply(_ visitor: CellContentVisitor) {
-        visitor.visit(data)
-    }
-
     public func evaluate(_ context: ExpressionContext) -> Value {
         return SingleValue<String>(data)
     }
@@ -71,10 +49,6 @@ public final class NumberContent: SingleDataContent {
 
     public init(_ data: Data) {
         self.data = data
-    }
-
-    public func apply(_ visitor: CellContentVisitor) {
-        visitor.visit(data)
     }
 
     public func evaluate(_ context: ExpressionContext) -> Value {
@@ -91,10 +65,6 @@ public final class FormulaContent: SingleDataContent {
         self.data = data
     }
 
-    public func apply(_ visitor: CellContentVisitor) {
-        visitor.visit(data)
-    }
-
     public func evaluate(_ context: ExpressionContext) -> Value {
         return data.expr.evaluate(context)
     }
@@ -109,10 +79,6 @@ public final class LabelContent: SingleDataContent {
         self.data = data
     }
 
-    public func apply(_ visitor: CellContentVisitor) {
-        visitor.visit(data)
-    }
-
     public func evaluate(_ context: ExpressionContext) -> Value {
         return SingleValue<String>("!\(data.name)")
     }
@@ -120,10 +86,6 @@ public final class LabelContent: SingleDataContent {
 
 public struct EmptyContent: CellContent {
     public init(){}
-
-    public func apply(_ visitor: CellContentVisitor) {
-        visitor.visit(EmptyValue())
-    }
 
     public func evaluate(_ context: ExpressionContext) -> Value {
         return NullValue()

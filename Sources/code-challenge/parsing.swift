@@ -4,7 +4,9 @@ import Parsing
 func readFile(location: String) throws -> [[String]] {
     let path = URL(fileURLWithPath: location)
     let text = try String(contentsOf: path)
-    return text.split(separator: "\n").map({row in row.split(separator: "|").map({cell in String(cell)})})
+    return text.split(separator: "\n").map({row in
+        row.split(separator: "|", omittingEmptySubsequences: false)
+        .map({cell in String(cell)})})
 }
 
 // TODO: need more rules for identifier name grammar
@@ -105,8 +107,8 @@ struct SubExpressionParser: Parser {
             Parse {
                 AtomicExprParser()
                 OneOf {
-                    "*".map({Operator.product})
-                    "/".map({Operator.division})
+                    "*".map({Operator.mult})
+                    "/".map({Operator.div})
                 }
                 SubExpressionParser()
             }.map(BinaryOp.init).map(asExpression)

@@ -10,16 +10,20 @@ public struct Formula: Equatable {
     }
 }
 
+// Evaluated cell value
 public protocol Value {
     func toString() -> String
 }
 
 struct ErrorValue: Value {
-    init() {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
     }
 
     func toString() -> String {
-        return "Error"
+        return "!Error: \(text)"
     }
 }
 
@@ -53,7 +57,7 @@ class ArrayValue: Value {
     }
 }
 
-// Special value for spreade b operator.
+// Special value for spread operator.
 // This value shouldn't be the final one, it can only be processed by a further function call
 class SpreadValue: Value {
     let vals: [Value]
@@ -124,22 +128,22 @@ public struct Literal<Data: Equatable>: Expression, Equatable {
 struct ParseError: Error {}
 
 public enum Operator {
-    case plus, minus, product, division
+    case plus, minus, mult, div
 
     static func fromString(_ str: String) -> Operator {
         switch str {
             case "+": return plus
             case "-": return minus
-            case "*": return product
-            case "/": return division
+            case "*": return mult
+            case "/": return div
             default: fatalError()
         }
     }
 }
 
 public struct BinaryOp: Expression {
-    let op: Operator
     let left: Expression
+    let op: Operator
     let right: Expression
 
     public init(_ left: Expression, _ op: Operator, _ right: Expression) {
@@ -159,13 +163,14 @@ public struct BinaryOp: Expression {
                 switch op {
                     case .plus: return SingleValue<Double>(leftVal.val + rightVal.val)
                     case .minus: return SingleValue<Double>(leftVal.val - rightVal.val)
-                    case .product: return SingleValue<Double>(leftVal.val * rightVal.val)
-                    case .division: return SingleValue<Double>(leftVal.val / rightVal.val)
+                    case .mult: return SingleValue<Double>(leftVal.val * rightVal.val)
+                    case .div: return SingleValue<Double>(leftVal.val / rightVal.val)
                 }
             }
         }
 
-        return ErrorValue()
+        // TODO: Better to add more context here
+        return ErrorValue("!Arithmetic error")
     }
 
     public func getReferences(_ context: ExpressionContext,_ refs: inout Set<CellAddress>) {
@@ -273,7 +278,7 @@ public struct UpFormulaRef: Expression, Equatable {
 
     public func evaluate(_ context: ExpressionContext) -> Value {
         if context.address.y < offset {
-            return ErrorValue()
+            return ErrorValue("!Address ^\(offset)")
         }
 
         if let expr = getFormulaExpression(context) {
@@ -389,7 +394,7 @@ public struct LastColGroupCellRef: Expression, Equatable {
         if let address = context.sheet.getLastGroupCell(x, context.address.y) {
             return context.sheet.getCell(address).evaluate(context.withAddress(address))
         } else {
-            return ErrorValue()
+            return ErrorValue("!Address \(Character(UnicodeScalar(Character("A").asciiValue! + UInt8(x))))")
         }
     }
 
@@ -410,7 +415,6 @@ public struct LastColGroupCellRef: Expression, Equatable {
 
 // Reference to a cell by label + row offset, e.g.
 // @label<n>
-
 public struct LabelRef: Expression, Equatable {
     let label: Label
     let rowOffset: Int
@@ -428,7 +432,7 @@ public struct LabelRef: Expression, Equatable {
         if let address = context.sheet.getCellAddressByLabel(label, rowOffset) {
             return context.sheet.getCell(address).evaluate(context.withAddress(address))
         } else {
-            return ErrorValue()
+            return ErrorValue("!Address @\(label.name)<\(rowOffset + 1)>")
         }
     }
 
